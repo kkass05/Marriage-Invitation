@@ -32,7 +32,7 @@ h1,h2,h3{font-family:'Noto Serif',serif;font-weight:500;letter-spacing:.3px}
 .ambient-bg .amb-nevesta{top:-8%;height:62%}
 .ambient-bg .amb-shanyrak{bottom:-12%;height:58%}
 .ambient-veil{position:absolute;inset:0;background:linear-gradient(180deg,var(--cream) 0%,rgba(247,241,231,.86) 30%,rgba(239,229,211,.92) 70%,var(--cream-deep) 100%)}
-body>*:not(.ambient-bg){position:relative;z-index:1}
+body>*:not(.ambient-bg):not(.modal-backdrop){position:relative;z-index:1}
 
 /* HERO */
 .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:56px 20px 40px;perspective:800px}
@@ -107,6 +107,24 @@ section.block{padding:70px 0}
 footer{text-align:center;padding:60px 24px 70px}
 footer .heart{color:var(--gold);font-size:22px}
 footer p{color:var(--ink-soft);margin-top:10px;font-size:15px}
+
+/* SUCCESS MODAL */
+.modal-backdrop{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(74,64,56,.45);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .35s ease}
+.modal-backdrop.show{opacity:1;pointer-events:auto}
+.modal{position:relative;width:100%;max-width:360px;background:var(--cream);border:1px solid var(--gold-soft);border-radius:22px;padding:40px 30px 32px;text-align:center;box-shadow:0 30px 70px rgba(74,64,56,.35);transform:scale(.88) translateY(16px);opacity:0;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .35s ease}
+.modal-backdrop.show .modal{transform:scale(1) translateY(0);opacity:1}
+.modal-icon{width:60px;height:60px;margin:0 auto 20px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 10px 24px rgba(198,161,91,.4)}
+.modal-icon svg{width:26px;height:26px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.modal-icon path{stroke-dasharray:24;stroke-dashoffset:24;animation:draw .5s ease .25s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.modal h3{font-size:24px;margin-bottom:10px}
+.modal p{color:var(--ink-soft);font-size:15px;line-height:1.7;margin-bottom:26px}
+.modal-close{padding:12px 34px}
+.modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border:none;background:transparent;color:var(--ink-soft);font-size:18px;cursor:pointer;border-radius:50%;transition:.2s;line-height:1}
+.modal-x:hover{background:var(--gold-soft);color:var(--ink)}
+@media (prefers-reduced-motion: reduce){
+  .modal-backdrop,.modal,.modal-icon path{transition:none!important;animation:none!important}
+}
 </style>
 </head>
 <body>
@@ -244,6 +262,19 @@ footer p{color:var(--ink-soft);margin-top:10px;font-size:15px}
   <p>Сіздерді қуанышпен күтеміз!</p>
 </footer>
 
+<!-- SUCCESS MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button type="button" class="modal-x" id="modalClose2" aria-label="Жабу">✕</button>
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>
+    </div>
+    <h3 id="modalTitle">Рахмет!</h3>
+    <p>Жауабыңыз қабылданды. Сіздерді қуанышпен күтеміз! 🤍</p>
+    <button type="button" class="btn modal-close" id="modalClose">Жабу</button>
+  </div>
+</div>
+
 <script>
 // === ВСТАВЬТЕ СЮДА ССЫЛКУ ИЗ GOOGLE APPS SCRIPT (раздел 6 плана) ===
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZZ9HNGGtQ28hVUT77cerxfuQCseDQh287yhaWM-mtLK9q7gUCrVK3m14uRPFTi9gh/exec";
@@ -339,6 +370,23 @@ if(heroPhoto && shine){
   }
 }
 
+// Всплывающее окно об успешной отправке
+const modalBackdrop = document.getElementById('modalBackdrop');
+function openModal(){
+  modalBackdrop.classList.add('show');
+  modalBackdrop.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+}
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalClose2').addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', (e)=>{ if(e.target === modalBackdrop) closeModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && modalBackdrop.classList.contains('show')) closeModal(); });
+
 // Отправка формы
 const form = document.getElementById('rsvp');
 const msg  = document.getElementById('msg');
@@ -352,9 +400,11 @@ form.addEventListener('submit', async (e)=>{
   try{
     await fetch(SCRIPT_URL, { method:'POST', body:data });
     form.reset();
-    msg.className = 'msg ok';
-    msg.textContent = 'Рахмет! Жауабыңыз қабылданды 🤍';
+    msg.className = '';
+    msg.textContent = '';
     btn.textContent = 'Жіберілді ✓';
+    openModal();
+    setTimeout(()=>{ btn.disabled = false; btn.textContent = 'Жіберу'; }, 1500);
   }catch(err){
     msg.className = 'msg err';
     msg.textContent = 'Қате шықты. Қайта көріңіз.';
